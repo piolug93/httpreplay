@@ -19,7 +19,7 @@ setup(
     install_requires=[
         "dpkt==1.9.2",
         "tlslite-ng==0.7.6",
-        "click>=6.7, <7",
+        "click",
         "brotli==1.0.7",
         "future",
     ],
