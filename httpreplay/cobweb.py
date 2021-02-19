@@ -229,7 +229,7 @@ class HttpProtocol(Protocol):
             res = self.parse_response(ts, recv)
 
             # Report this stream as being a valid HTTP stream.
-            self.parent.handle(s, ts, protocols[protocol], req, res, tlsinfo)
+            self.parent.handle(s, ts, protocols[protocol], req, res)
         else:
 
             # This wasn't a valid HTTP stream so we forward the original TCP
