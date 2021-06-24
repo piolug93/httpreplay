@@ -3,16 +3,14 @@
 # This file is part of HTTPReplay - http://jbremer.org/httpreplay/
 # See the file 'LICENSE' for copying permission.
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="HTTPReplay",
     version="0.3",
     author="Hatching B.V.",
     author_email="info@hatching.io",
-    packages=[
-        "httpreplay",
-    ],
+    packages=find_packages(),
     url="https://github.com/hatching/httpreplay",
     license="GPLv3",
     description="Properly interpret, decrypt, and replay pcap files",
