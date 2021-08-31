@@ -225,7 +225,7 @@ class HttpProtocol(Protocol):
         }
 
         # Only try to decode the HTTP response if the request was valid HTTP.
-        if req != None and not isinstance(req,_Request):
+        if req != None and not isinstance(req, _Request):
             res = self.parse_response(ts, recv)
 
             # Report this stream as being a valid HTTP stream.
@@ -234,15 +234,14 @@ class HttpProtocol(Protocol):
 
             # This wasn't a valid HTTP stream so we forward the original TCP
             # or TLS stream straight ahead to our parent.
-            self.parent.handle(s, ts, protocol, bytes_to_str(sent), bytes_to_str(recv), tlsinfo)
+            self.parent.handle(s, ts, protocol, bytes_to_str(sent), bytes_to_str(recv))
 
 class HttpsProtocol(HttpProtocol):
     """HTTPS handler interprets HTTP only upon successful TLS decryption."""
 
-    def handle(self, s, ts, protocol, sent, recv , tlsinfo=None):
+    def handle(self, s, ts, protocol, sent, recv, tlsinfo=None):
         if protocol != "tls":
-            print("Type: %s" % self.parent)
-            return self.parent.handle(s, ts, protocol, sent, recv, tlsinfo)
+            return self.parent.handle(s, ts, protocol, sent, recv)
 
         super(HttpsProtocol, self).handle(s, ts, protocol, sent, recv, tlsinfo)
 
