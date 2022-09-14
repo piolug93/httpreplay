@@ -441,24 +441,24 @@ class _TLSStream(tlslite.tlsrecordlayer.TLSRecordLayer):
             return self.decrypt(self.server_state, record_type, buf)
         except tlslite.errors.TLSBadRecordMAC:
             log.warning("Bad MAC record, cannot decrypt server stream.")
-            return ""
+            return b""
         except tlslite.errors.TLSDecryptionFailed:
             log.warning(
                 "Invalid data length. Data modulo blocklength was not 0"
             )
-            return ""
+            return b""
 
     def decrypt_client(self, record_type, buf):
         try:
             return self.decrypt(self.client_state, record_type, buf)
         except tlslite.errors.TLSBadRecordMAC:
             log.warning("Bad MAC record, cannot decrypt client stream.")
-            return ""
+            return b""
         except tlslite.errors.TLSDecryptionFailed:
             log.warning(
                 "Invalid data length. Data modulo blocklength was not 0"
             )
-            return ""
+            return b""
 
 class TLSStream(Protocol):
     """Decrypts TLS streams into a TCPStream-like session."""
@@ -571,16 +571,25 @@ class TLSStream(Protocol):
             sent = []
             while self.sent:
                 record = self.sent.pop(0)
-                sent.append(self.tls.decrypt_client(record.type, record.data))
+                sentdata = self.tls.decrypt_client(record.type, record.data)
+                if sentdata:
+                    if isinstance(sentdata,str):
+                        sentdata=bytes(sentdata,'utf8')
+                    if isinstance(sentdata,bytes):
+                        sent.append(sentdata)
 
             recv = []
             while self.recv:
                 record = self.recv.pop(0)
 
                 try:
-                    recv.append(
-                        self.tls.decrypt_server(record.type, record.data)
-                    )
+                    recvdata = self.tls.decrypt_server(record.type, record.data)
+                    if recvdata:
+                        if isinstance(recvdata,str):
+                            recvdata=bytes(recvdata,'utf8')
+                        if isinstance(recvdata,bytes):
+                            recv.append(recvdata)
+
                 except tlslite.errors.TLSProtocolException:
                     log.info(
                         "Error decrypting TLS content, perhaps something "
@@ -588,13 +597,11 @@ class TLSStream(Protocol):
                         "back together in the right order (timestamp %f).",
                         ts,
                     )
-
+            
             if not isinstance(sent[0], bytes):
                 sent = [ord(c) if len(c) != 0 else b"" for c in sent]
-
             if not isinstance(recv[0], bytes):
                 recv = [ord(c) if len(c) != 0 else b"" for c in recv]
-
             ja3, ja3s, ja3_p, ja3s_p = None, None, None, None
             try:
                 ja3, ja3_p = JA3.JA3(self.client_hello.data)
@@ -610,7 +617,6 @@ class TLSStream(Protocol):
                 JA3=ja3, JA3S=ja3s, JA3_params=ja3_p, JA3S_params=ja3s_p,
                 client_hello=self.client_hello, server_hello=self.server_hello
             )
-
             self.parent.handle(s, ts, "tls", b"".join(sent), b"".join(recv), tlsinfo)
             return True
 
