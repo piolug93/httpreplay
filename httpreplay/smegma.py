@@ -598,9 +598,9 @@ class TLSStream(Protocol):
                         ts,
                     )
             
-            if not isinstance(sent[0], bytes):
+            if sent and not isinstance(sent[0], bytes):
                 sent = [ord(c) if len(c) != 0 else b"" for c in sent]
-            if not isinstance(recv[0], bytes):
+            if recv and not isinstance(recv[0], bytes):
                 recv = [ord(c) if len(c) != 0 else b"" for c in recv]
             ja3, ja3s, ja3_p, ja3s_p = None, None, None, None
             try:
