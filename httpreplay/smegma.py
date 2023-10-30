@@ -487,7 +487,7 @@ class TLSStream(Protocol):
         self.client_hello = self.parse_record(self.sent.pop(0))
         self.server_hello = self.parse_record(self.recv.pop(0))
 
-        if not isinstance(self.client_hello.data, dpkt.ssl.TLSClientHello):
+        if not hasattr(self.client_hello, "data") or not isinstance(self.client_hello.data, dpkt.ssl.TLSClientHello):
             log.info(
                 "Stream %s:%d -> %s:%d doesn't appear to be a proper TLS "
                 "stream (perhaps the client is outdated), skipping it.", *s
@@ -495,7 +495,7 @@ class TLSStream(Protocol):
             self.state = "done"
             return
 
-        if not isinstance(self.server_hello.data, dpkt.ssl.TLSServerHello):
+        if not hasattr(self.server_hello, "data") or not isinstance(self.server_hello.data, dpkt.ssl.TLSServerHello):
             log.info(
                 "Stream %s:%d -> %s:%d doesn't appear to be a proper TLS "
                 "stream (perhaps the server is outdated), skipping it.", *s
@@ -598,9 +598,9 @@ class TLSStream(Protocol):
                         ts,
                     )
             
-            if not isinstance(sent[0], bytes):
+            if sent and not isinstance(sent[0], bytes):
                 sent = [ord(c) if len(c) != 0 else b"" for c in sent]
-            if not isinstance(recv[0], bytes):
+            if recv and not isinstance(recv[0], bytes):
                 recv = [ord(c) if len(c) != 0 else b"" for c in recv]
             ja3, ja3s, ja3_p, ja3s_p = None, None, None, None
             try:
