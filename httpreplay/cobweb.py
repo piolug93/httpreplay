@@ -14,6 +14,7 @@ import base64
 
 from httpreplay.exceptions import UnknownHttpEncoding
 from httpreplay.shoddy import Protocol
+from httpreplay.smegma import TLSStream
 
 log = logging.getLogger(__name__)
 
@@ -253,11 +254,11 @@ class SmtpProtocol(Protocol):
         "etrn", "pipelining", "chunking", "data",
         "dsn", "rset", "vrfy", "help" ,
         "quit", "noop", "expn", "binarymime",
-        "relay", "size", "starttls", "checkpoint",
+        "relay", "size", "checkpoint",
         "enhancedstatuscodes", "8bitmime", "send"
     ]
 
-    def init(self, *args, **kwargs):
+    def init(self, secrets=None, *args, **kwargs):
         self.request = SmtpRequest()
         self.reply = SmtpReply()
 
@@ -281,7 +282,8 @@ class SmtpProtocol(Protocol):
             "helo": self.handle_hostname,
             "mail": self.handle_mail,
             "rcpt": self.handle_rcpt,
-            "auth": self.handle_auth
+            "auth": self.handle_auth,
+            "starttls": self.handle_starttls
         }
 
         # Contains the functions to be called
@@ -290,20 +292,35 @@ class SmtpProtocol(Protocol):
             334: self.handle_auth_serv_response,
             354: self.handle_mailbody,
         }
+        self.tls = False
+        self.tls_parse = TLSStream(self, secrets)
+
 
     def handle(self, s, ts, protocol, sent, recv, tlsinfo=None):
 
-        if protocol != "tcp":
+        if protocol not in ["tcp", "tls"]:
             self.parent.handle(s, ts, protocol, sent, recv, tlsinfo)
             return
 
         if self.stream is None:
             self.stream = self.parent.tcp.streams[s]
-        self.parse_request(sent.decode("utf-8"))
-        self.parse_reply(recv.decode("utf-8"))
+        
+        if self.tls and protocol != "tls" and self.tls_parse.state != "done":
+            self.tls_parse.handle(s, ts, protocol, sent, recv, tlsinfo)
+        elif self.tls_parse.state == "done":
+            if self.stream.state in ["conn_finish", "conn_closed"]:
+                self.parent.handle(s, ts, "smtp", self.request, self.reply, tlsinfo)
+        else:
+            sent = sent.decode("utf-8")
+            recv = recv.decode("utf-8")
+            self.parse_request(sent)
+            self.parse_reply(recv)
 
-        if self.stream.state in ["conn_finish", "conn_closed"]:
-            self.parent.handle(s, ts, "smtp", self.request, self.reply, tlsinfo)
+            if self.stream.state in ["conn_finish", "conn_closed"]:
+                self.parent.handle(s, ts, "smtp", self.request, self.reply, tlsinfo)
+
+    def handle_starttls(self, data):
+        self.tls = True
 
     def handle_hostname(self, data):
         if len(data) > 1:
@@ -419,10 +436,10 @@ class SmtpProtocol(Protocol):
         """
         self.request.raw.append(request)
 
-        if self.command != "data":
-            data = request.split(None)
-        else:
+        if self.command == "data":
             data = request
+        else:
+            data = request.split(None)
 
         if not data:
             return

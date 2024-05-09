@@ -32,5 +32,5 @@ def https_handler(tlsmaster={}):
 def tls_handler(tlsmaster={}):
     return httpreplay.smegma.TLSStream(None, tlsmaster)
 
-def smtp_handler():
-    return httpreplay.cobweb.SmtpProtocol()
+def smtp_handler(tlsmaster={}):
+    return httpreplay.cobweb.SmtpProtocol(None, tlsmaster)
